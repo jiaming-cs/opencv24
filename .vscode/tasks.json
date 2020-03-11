@@ -1,0 +1,41 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "shell",
+            "label": "g++ opencv build",
+            "command": "g++",
+            "args": [
+                "-g","-std=c++11", "${file}", "-o", "${fileDirname}/${fileBasenameNoExtension}",
+                "-I", "/usr/local/include",
+                "-I", "/usr/local/include/opencv2",
+                "-L", "/usr/local/lib",
+                "-l", "opencv_features2d",
+                "-l", "opencv_highgui",
+                "-l", "opencv_nonfree",
+                "-l", "opencv_core",
+                "-l", "opencv_calib3d",
+                "-l", "opencv_contrib",
+                "-l", "opencv_flann",
+                "-l", "opencv_gpu",
+                "-l", "opencv_imgproc",
+                "-l", "opencv_legacy",
+                "-l", "opencv_ml",
+                "-l", "opencv_objdetect",
+                "-l", "opencv_ocl",
+                "-l", "opencv_photo",
+                "-l", "opencv_stitching",
+                "-l", "opencv_video",
+                "-l", "opencv_videostab"
+            ],
+            "options": {
+                "cwd": "/usr/bin"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": "build"
+        }
+    ]
+ 
+}
