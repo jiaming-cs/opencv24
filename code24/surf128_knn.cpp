@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <vector>
+#include <ctime>
 #include "opencv2/core/core.hpp"
 #include "opencv2/calib3d/calib3d.hpp"
 #include "opencv2/features2d/features2d.hpp"
@@ -10,6 +11,7 @@
 #include "opencv2/nonfree/nonfree.hpp"
 
 using namespace cv;
+using namespace std;
 
 Mat drawMatch(Mat img1, Mat img2, double ratio = 0.8, bool extended = true){
    
@@ -92,7 +94,11 @@ int main(int argc, char const *argv[])
 
     Mat img1 = imread(folder + img1_name, IMREAD_COLOR);
     Mat img2 = imread(folder + img2_name, IMREAD_COLOR);
+    time_t start, end;
+    start = clock();
     Mat img_match = drawMatch(img1, img2);
+    end = clock();
+    cout<<"Run time for surf128: "<< (double)(end - start) / CLOCKS_PER_SEC<<endl;
     imshow("Matches", img_match);
     waitKey(0);
     return 0;

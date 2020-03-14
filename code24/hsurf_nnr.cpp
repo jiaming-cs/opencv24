@@ -3,8 +3,9 @@
 #include <iostream>
 #include <vector>
 #include <numeric>
+#include <ctime>
 #include "opencv2/core/core.hpp"
-#include "opencv2/imgproc/imgproc.hpp"
+#include "opencv2/imgproc/imgproc.hpp" // getGaussianKernal
 #include "opencv2/calib3d/calib3d.hpp"
 #include "opencv2/features2d/features2d.hpp"
 #include "opencv2/nonfree/features2d.hpp"
@@ -135,23 +136,25 @@ Mat drawMatch(Mat img1, Mat img2, int match_num = 50, double weight = 0.8, doubl
   
     Mat H = findHomography(img1_points, img2_points, RANSAC);
     
-    vector<Point2f> img1_corners(4);
-    img1_corners[0]=Point2f(0,0);
-    img1_corners[1]=Point2f(img1.cols,0);
-    img1_corners[2]=Point2f(img1.cols, img1.rows);
-    img1_corners[3]=Point2f(0,img1.rows);
-    
-    vector<Point2f> img2_corners(4);
+    vector<Point2f> img1_cross(5);
+    Point2f middle = Point2f(img1.cols/2, img1.rows/2);
+    img1_cross[0]=middle+Point2f(0,-50);
+    img1_cross[1]=middle+Point2f(0, 50);
+    img1_cross[2]=middle+Point2f(-50, 0);
+    img1_cross[3]=middle+Point2f(50, 0);
+    img1_cross[4]=middle;
+    vector<Point2f> img2_cross(5);
    
     if (!H.empty()){
         
-        perspectiveTransform(img1_corners, img2_corners, H);
-        
-        line(img_matches, img2_corners[0]+Point2f(img1.cols,0), img2_corners[1] + Point2f(img1.cols,0), Scalar(0, 255, 0), 2);
-        line(img_matches, img2_corners[1]+Point2f(img1.cols,0), img2_corners[2] + Point2f(img1.cols,0), Scalar(0, 255, 0), 2);
-        line(img_matches, img2_corners[2]+Point2f(img1.cols,0), img2_corners[3] + Point2f(img1.cols,0), Scalar(0, 255, 0), 2);
-        line(img_matches, img2_corners[3]+Point2f(img1.cols,0), img2_corners[0] + Point2f(img1.cols,0), Scalar(0, 255, 0), 2);
+        perspectiveTransform(img1_cross, img2_cross, H);
 
+        line(img_matches, img1_cross[0], img1_cross[1], Scalar(0, 255, 0), 2);
+        line(img_matches, img1_cross[2], img1_cross[3], Scalar(0, 255, 0), 2);
+        
+        line(img_matches, img2_cross[0]+Point2f(img1.cols,0), img2_cross[1] + Point2f(img1.cols,0), Scalar(0, 255, 0), 2);
+        line(img_matches, img2_cross[2]+Point2f(img1.cols,0), img2_cross[3] + Point2f(img1.cols,0), Scalar(0, 255, 0), 2);
+        circle(img_matches, img2_cross[5]+Point2f(img1.cols,0), 5, Scalar(0, 0, 255), 2);
     }
        
     return img_matches;
@@ -167,7 +170,11 @@ int main(int argc, char const *argv[])
 
     Mat img1 = imread(folder + img1_name, IMREAD_COLOR);
     Mat img2 = imread(folder + img2_name, IMREAD_COLOR);
+    time_t start, end;
+    start = clock();
     Mat img_match = drawMatch(img1, img2);
+    end = clock();
+    cout<<"Run time for hsurf: "<< (double)(end - start) / CLOCKS_PER_SEC<<endl;
     imshow("Matches", img_match);
     waitKey(0);
     return 0;
