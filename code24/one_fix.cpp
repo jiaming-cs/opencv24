@@ -15,7 +15,7 @@ using namespace cv;
 
 void drawMatch(Mat& img1, Mat& img2, Mat& img_matches, double ratio = 0.75, bool extended = false){
    
-   int minHessian=500;
+    int minHessian=500;
     SurfFeatureDetector  detector(minHessian, 4, 3, false);
     vector<KeyPoint>key_points_img1, key_points_img2;
     detector.detect(img1, key_points_img1);
@@ -26,6 +26,9 @@ void drawMatch(Mat& img1, Mat& img2, Mat& img_matches, double ratio = 0.75, bool
         detector.detect(img1, key_points_img1);
         detector.detect(img2, key_points_img2);    
     }
+
+   
+    
     
     if(key_points_img1.size() < 4 || key_points_img2.size() < 4){
         return ;
@@ -127,7 +130,7 @@ void drawMatch(Mat& img1, Mat& img2, Mat& img_matches, double ratio = 0.75, bool
   
 }
 
-
+/*
 void drawMatch1(Mat& img1, Mat& img2, Mat& img_matches, double ratio = 0.75, bool extended = false){
    
     int minHessian=25;
@@ -237,7 +240,8 @@ void drawMatch1(Mat& img1, Mat& img2, Mat& img_matches, double ratio = 0.75, boo
   
 }
 
- 
+*/
+
 int main()
 {
 	
@@ -245,19 +249,22 @@ int main()
 	Mat frame;
  
 	cp1.open("http://admin:admin@10.10.10.101:8081");
-	cp2.open("http://admin:admin@10.10.10.115:8081");
+	//cp2.open("http://admin:admin@10.10.10.115:8081");
     Mat frame1, frame2, out;
+    frame2 = imread("/home/jiaming/opencv24/img/img1.png", IMREAD_COLOR);
+    //imshow("img1", frame2);
+
 	int index = 0;
     while (1)
 	{
 
 		cp1 >> frame1;
         frame1 = frame1(Rect(0, 50, frame1.cols, frame1.rows-50));
-        cp2 >> frame2;
-        frame2 = frame2(Rect(0, 50, frame2.cols, frame2.rows-50));
+        //cp2 >> frame2;
+        //frame2 = frame2(Rect(0, 50, frame2.cols, frame2.rows-50));
 
-        Mat out;
-		drawMatch(frame1, frame2, out);
+        
+		drawMatch(frame2, frame1, out);
         if (out.empty()){
             continue;
         }
