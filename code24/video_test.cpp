@@ -19,7 +19,12 @@ void drawMatch(Mat& img1, Mat& img2, double ratio = 0.8, bool extended = false){
     vector<KeyPoint>key_points_img1, key_points_img2;
     detector.detect(img1, key_points_img1);
     detector.detect(img2, key_points_img2);
- 
+    while (key_points_img1.size()<100 && minHessian >= 25){
+        minHessian /= 2;
+        SurfFeatureDetector  detector(minHessian, 4, 3, false);
+        detector.detect(img1, key_points_img1);
+        detector.detect(img2, key_points_img2);
+    }
     
     if(key_points_img1.size() < 4 || key_points_img2.size() < 4){
         return ;
@@ -68,9 +73,9 @@ void drawMatch(Mat& img1, Mat& img2, double ratio = 0.8, bool extended = false){
 
     Mat img_matches;
 
-    //drawMatches(img1, key_points_img1, img2, key_points_img2, good_matches, img_matches);
+    drawMatches(img1, key_points_img1, img2, key_points_img2, good_matches, img_matches);
     
-    Mat H = findHomography(img1_points, img2_points, RANSAC);
+    Mat H = findHomography(img1_points, img2_points, RANSAC, 0.5);
     
     vector<Point2f> img1_cross(5);
     Point2f middle = Point2f(img1.cols/2, img1.rows/2);

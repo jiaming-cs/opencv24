@@ -21,12 +21,17 @@ using namespace cv;
 
 void drawMatch(Mat& img1, Mat& img2, Mat& img_matches, double ratio = 0.75, bool extended = false){
    
-    int minHessian=25;
+    int minHessian=400;
     SurfFeatureDetector  detector(minHessian, 4, 3, false);
     vector<KeyPoint>key_points_img1, key_points_img2;
     detector.detect(img1, key_points_img1);
     detector.detect(img2, key_points_img2);
- 
+    while (key_points_img1.size()<100 && minHessian >= 25){
+        minHessian /= 2;
+        SurfFeatureDetector  detector(minHessian, 4, 3, false);
+        detector.detect(img1, key_points_img1);
+        detector.detect(img2, key_points_img2);
+    }
     
     if(key_points_img1.size() < 4 || key_points_img2.size() < 4){
         return ;
@@ -84,7 +89,7 @@ void drawMatch(Mat& img1, Mat& img2, Mat& img_matches, double ratio = 0.75, bool
     vector<Point2f> img1_points;
     vector<Point2f> img2_points;
     
-    int num_good = min((int)good_matches.size(), 50);
+    int num_good = min((int)good_matches.size(), (int)good_matches.size());
     vector<DMatch> first_matches;
     
     for(unsigned int i = 0; i < num_good; ++i)
@@ -101,7 +106,7 @@ void drawMatch(Mat& img1, Mat& img2, Mat& img_matches, double ratio = 0.75, bool
     drawMatches(img1, key_points_img1, img2, key_points_img2, first_matches, img_matches);
     
     cv::putText(img_matches, to_string(key_points_img1.size()) + "   " + to_string(key_points_img2.size()), Point(0, 50), FONT_HERSHEY_COMPLEX, 1, Scalar(0, 0, 0) );
-    Mat H = findHomography(img1_points, img2_points, RANSAC, 3);
+    Mat H = findHomography(img1_points, img2_points, RANSAC, 5);
     
     vector<Point2f> img1_cross(5);
     Point2f middle = Point2f(img1.cols/2, img1.rows/2);
@@ -131,11 +136,17 @@ void drawMatch(Mat& img1, Mat& img2, Mat& img_matches, double ratio = 0.75, bool
 
 void drawMatch1(Mat& img1, Mat& img2, Mat& img_matches, double ratio = 0.75, bool extended = false){
    
-    int minHessian=25;
+    int minHessian=400;
     SurfFeatureDetector  detector(minHessian, 4, 3, false);
     vector<KeyPoint>key_points_img1, key_points_img2;
     detector.detect(img1, key_points_img1);
     detector.detect(img2, key_points_img2);
+    while (key_points_img1.size()<100 && minHessian >= 25){
+        minHessian /= 2;
+        SurfFeatureDetector  detector(minHessian, 4, 3, false);
+        detector.detect(img1, key_points_img1);
+        detector.detect(img2, key_points_img2);
+    }
  
     
     if(key_points_img1.size() < 4 || key_points_img2.size() < 4){
@@ -211,7 +222,7 @@ void drawMatch1(Mat& img1, Mat& img2, Mat& img_matches, double ratio = 0.75, boo
     drawMatches(img1, key_points_img1, img2, key_points_img2, first_matches, img_matches);
     
     cv::putText(img_matches, to_string(key_points_img1.size()) + "   " + to_string(key_points_img2.size()), Point(0, 50), FONT_HERSHEY_COMPLEX, 1, Scalar(0, 0, 0) );
-    Mat H = findHomography(img1_points, img2_points, LMEDS, 3);
+    Mat H = findHomography(img1_points, img2_points, RANSAC, 1);
     
     vector<Point2f> img1_cross(5);
     Point2f middle = Point2f(img1.cols/2, img1.rows/2);
@@ -255,21 +266,20 @@ int main(int argc, char const *argv[])
 
     Mat img1 = imread(folder + img1_name + to_string(i) + extention, IMREAD_COLOR);
     Mat img2 = imread(folder + img2_name + to_string(i) + extention, IMREAD_COLOR);
+    
     //Mat org = imread(comp_folder + to_string(i) + extention, IMREAD_COLOR);
     drawMatch(img1, img2, ransac);
     if (!ransac.empty())
         imshow("RANSAC", ransac);
     drawMatch1(img1, img2, lmead);
     if (!lmead.empty())
-        imshow("LMED", lmead);
-    
+        imshow("RANSAC1", lmead);
+    waitKey(0);
     
     //drawMatch(img2, img1, reverse);
     //if (!reverse.empty())
         //imshow("Reverse", reverse);
-    if (i==0)
-    waitKey(5000);
-    waitKey(500);
+    
     i++;
     }
     
