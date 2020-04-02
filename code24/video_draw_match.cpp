@@ -3,6 +3,7 @@
 #include <vector>
 #include <ctime>
 #include "opencv2/core/core.hpp"
+#include "opencv2/imgproc.hpp"
 #include "opencv2/calib3d/calib3d.hpp"
 #include "opencv2/features2d/features2d.hpp"
 #include "opencv2/nonfree/features2d.hpp"
@@ -13,14 +14,14 @@ using namespace std;
 using namespace cv;
 
 
-void drawMatch(Mat& img1, Mat& img2, Mat& img_matches, double ratio = 0.75, bool extended = false){
+void drawMatch(Mat& img1, Mat& img2, Mat& img_matches, double ratio = 0.80, bool extended = false){
    
-   int minHessian=500;
+    int minHessian=400;
     SurfFeatureDetector  detector(minHessian, 4, 3, false);
     vector<KeyPoint>key_points_img1, key_points_img2;
     detector.detect(img1, key_points_img1);
     detector.detect(img2, key_points_img2);
-    while((key_points_img1.size()<50 || key_points_img2.size()<50) && minHessian > 25){
+    while(key_points_img1.size() < 400 && minHessian > 5){
         minHessian /= 2;
         SurfFeatureDetector detector(minHessian, 4, 3, false);
         detector.detect(img1, key_points_img1);
@@ -83,7 +84,7 @@ void drawMatch(Mat& img1, Mat& img2, Mat& img_matches, double ratio = 0.75, bool
     vector<Point2f> img1_points;
     vector<Point2f> img2_points;
     
-    int num_good = min((int)good_matches.size(), 50);
+    int num_good = min((int)good_matches.size(), 100);
     vector<DMatch> first_matches;
     
     for(unsigned int i = 0; i < num_good; ++i)
@@ -100,7 +101,7 @@ void drawMatch(Mat& img1, Mat& img2, Mat& img_matches, double ratio = 0.75, bool
     drawMatches(img1, key_points_img1, img2, key_points_img2, first_matches, img_matches);
     
     cv::putText(img_matches, to_string(key_points_img1.size()) + "   " + to_string(key_points_img2.size()), Point(0, 50), FONT_HERSHEY_COMPLEX, 1, Scalar(0, 0, 0) );
-    Mat H = findHomography(img1_points, img2_points, RANSAC, 3);
+    Mat H = findHomography(img1_points, img2_points, RANSAC,  10);
     
     vector<Point2f> img1_cross(5);
     Point2f middle = Point2f(img1.cols/2, img1.rows/2);
@@ -128,14 +129,19 @@ void drawMatch(Mat& img1, Mat& img2, Mat& img_matches, double ratio = 0.75, bool
 }
 
 
-void drawMatch1(Mat& img1, Mat& img2, Mat& img_matches, double ratio = 0.75, bool extended = false){
+void drawMatch1(Mat& img1, Mat& img2, Mat& img_matches, double ratio = 0.80, bool extended = false){
    
-    int minHessian=25;
+    int minHessian=400;
     SurfFeatureDetector  detector(minHessian, 4, 3, false);
     vector<KeyPoint>key_points_img1, key_points_img2;
     detector.detect(img1, key_points_img1);
     detector.detect(img2, key_points_img2);
- 
+    while(key_points_img1.size() < 200 && minHessian > 5){
+        minHessian /= 2;
+        SurfFeatureDetector detector(minHessian, 4, 3, false);
+        detector.detect(img1, key_points_img1);
+        detector.detect(img2, key_points_img2);    
+    }
     
     if(key_points_img1.size() < 4 || key_points_img2.size() < 4){
         return ;
@@ -193,7 +199,7 @@ void drawMatch1(Mat& img1, Mat& img2, Mat& img_matches, double ratio = 0.75, boo
     vector<Point2f> img1_points;
     vector<Point2f> img2_points;
     
-    int num_good = min((int)good_matches.size(),50);
+    int num_good = min((int)good_matches.size(),100);
     vector<DMatch> first_matches;
     
     for(unsigned int i = 0; i < num_good; ++i)
@@ -210,7 +216,7 @@ void drawMatch1(Mat& img1, Mat& img2, Mat& img_matches, double ratio = 0.75, boo
     drawMatches(img1, key_points_img1, img2, key_points_img2, first_matches, img_matches);
     
     cv::putText(img_matches, to_string(key_points_img1.size()) + "   " + to_string(key_points_img2.size()), Point(0, 50), FONT_HERSHEY_COMPLEX, 1, Scalar(0, 0, 0) );
-    Mat H = findHomography(img1_points, img2_points, LMEDS, 3);
+    Mat H = findHomography(img1_points, img2_points, RANSAC, 10);
     
     vector<Point2f> img1_cross(5);
     Point2f middle = Point2f(img1.cols/2, img1.rows/2);
@@ -246,22 +252,32 @@ int main()
  
 	cp1.open("http://admin:admin@10.10.10.101:8081");
 	cp2.open("http://admin:admin@10.10.10.115:8081");
-    Mat frame1, frame2, out;
+    Mat frame1, frame2, out1, out2;
 	int index = 0;
     while (1)
 	{
 
 		cp1 >> frame1;
+        
         frame1 = frame1(Rect(0, 50, frame1.cols, frame1.rows-50));
         cp2 >> frame2;
         frame2 = frame2(Rect(0, 50, frame2.cols, frame2.rows-50));
 
-        Mat out;
-		drawMatch(frame1, frame2, out);
-        if (out.empty()){
+        
+		drawMatch(frame1, frame2, out1);
+        //GaussianBlur(frame1, frame1, Size(5, 5), 3);
+        //GaussianBlur(frame2, frame2, Size(5, 5), 3);
+        drawMatch1(frame1, frame2, out2);
+        if (out1.empty()){
             continue;
         }
-        imshow("Match", out);
+        imshow("Threshold 400", out1);
+
+        if (out2.empty()){
+            continue;
+        }
+        imshow("Threshold 200", out2);
+        
         //imwrite("/home/jiaming/opencv24/code24/img1/"+to_string(index)+".png", frame1);
         //imwrite("/home/jiaming/opencv24/code24/img2/"+to_string(index)+".png", frame2);
         //imwrite("/home/jiaming/opencv24/code24/out_frames/"+to_string(index)+".png", out);

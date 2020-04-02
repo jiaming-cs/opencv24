@@ -16,33 +16,87 @@
 using namespace std;
 using namespace cv;
 
+bool compare_hessian(const KeyPoint &kp1, const KeyPoint &kp2) {
+    return kp1.response > kp2.response;
+}
 
 
-
-void drawMatch(Mat& img1, Mat& img2, Mat& img_matches, double ratio = 0.90, bool extended = false){
-   
-    int minHessian=400;
-    SurfFeatureDetector  detector(minHessian, 4, 3, false);
-    vector<KeyPoint>key_points_img1, key_points_img2;
-    detector.detect(img1, key_points_img1);
-    detector.detect(img2, key_points_img2);
-
-    while (key_points_img1.size()<200 && minHessian >= 25){
-        minHessian /= 2;
-        SurfFeatureDetector  detector(minHessian, 4, 3, false);
-        detector.detect(img1, key_points_img1);
-        detector.detect(img2, key_points_img2);
-    }
+void draw_match_double_surf(Mat& img1,
+                Mat& img2,
+                Mat& img_matches,
+                Ptr<SurfFeatureDetector> &detector1,
+                Ptr<SurfFeatureDetector> &detector2,
+                int max_hessian = 800,
+                int min_hessian = 5,
+                int max_size = 300,
+                int min_size = 200,
+                double ratio = 0.8, 
+                bool extended = false){
     
+                    
+    vector<KeyPoint>key_points_img1, key_points_img2;
+    time_t start, end;
+ 
+    detector1->detect(img1, key_points_img1);
+
+    int hessian = detector1->hessianThreshold;
+    //cout << "Threshold_start:" << detector->hessianThreshold <<endl;
+
+    while ((key_points_img1.size() < min_size || key_points_img1.size() > max_size) && hessian >= min_hessian){
+        if ( key_points_img1.size() < min_size ){
+            hessian = (int)hessian/1.5;
+            detector1.release();
+            //start = clock();
+            detector1 = new SurfFeatureDetector(hessian);
+            //end = clock();
+            //cout<<"Time for new a SURF objct: "<< (end-start) * 1.0 / CLOCKS_PER_SEC <<endl;
+            detector1->detect(img1, key_points_img1);
+        }
+
+        else
+        {
+            sort(key_points_img1.begin(), key_points_img1.end(), compare_hessian);
+            key_points_img1.resize(max_size);
+        }
+        
+    }
+    cout<<"Hessian1: "<<detector1->hessianThreshold<<endl;
+
+    detector2->detect(img2, key_points_img2);
+
+    hessian = detector2->hessianThreshold;
+
+    while ((key_points_img2.size() < min_size || key_points_img2.size() > max_size) && hessian >= min_hessian){
+        if ( key_points_img2.size() < min_size ){
+            hessian = (int)hessian/1.5;
+            detector2.release();
+            //start = clock();
+            detector2 = new SurfFeatureDetector(hessian);
+            //end = clock();
+            //cout<<"Time for new a SURF objct: "<< (end-start) * 1.0 / CLOCKS_PER_SEC <<endl;
+            detector2->detect(img2, key_points_img2);
+        }
+
+        else
+        {
+            sort(key_points_img2.begin(), key_points_img2.end(), compare_hessian);
+            key_points_img2.resize(max_size);
+        }
+        
+    }
+    cout<<"Hessian2: "<<detector2->hessianThreshold<<endl;
+    cout<<"Size: "<<key_points_img2.size()<<endl;
+    
+    //cout << "Threshold_end:" << detector->hessianThreshold <<endl;
     if(key_points_img1.size() < 4 || key_points_img2.size() < 4){
         return ;
     }
 
     Mat descriptor_img1, descriptor_img2;
-    detector.compute(img1, key_points_img1, descriptor_img1);
-    detector.compute(img2, key_points_img2, descriptor_img2);
+    detector1->compute(img1, key_points_img1, descriptor_img1);
+    detector2->compute(img2, key_points_img2, descriptor_img2);
     
-    
+
     BFMatcher matcher;
     vector<vector<DMatch>>matches;
     matcher.knnMatch(descriptor_img1, descriptor_img2, matches, 2);
@@ -52,11 +106,11 @@ void drawMatch(Mat& img1, Mat& img2, Mat& img_matches, double ratio = 0.90, bool
     if(descriptor_img1.empty() || descriptor_img2.empty()){
         return ;
     }
+    
     map<int, DMatch> matches_map;
    
-    if (matches.size() < 30){
-        ratio = 0.9;
-    }
+    //double ratio = max_ratio  - (max_ratio - min_ratio) * ((key_points_img1.size() - min_size) * 1.0 / (max_size - min_size));
+    //cout<<"ratio: "<<ratio<<endl;
 
     for(int i = 0; i < matches.size(); i++)
     {
@@ -81,9 +135,8 @@ void drawMatch(Mat& img1, Mat& img2, Mat& img_matches, double ratio = 0.90, bool
     if (good_matches.size() < 4){
         return ;
     }
-
-    cout<<"Number of vaild keypoint: "<< good_matches.size()<<endl;
-
+    cout<<"Number of vaild point: "<< good_matches.size()<<endl;
+    
     sort(good_matches.begin(), good_matches.end());
 
 
@@ -108,7 +161,7 @@ void drawMatch(Mat& img1, Mat& img2, Mat& img_matches, double ratio = 0.90, bool
     drawMatches(img1, key_points_img1, img2, key_points_img2, first_matches, img_matches);
     
     cv::putText(img_matches, to_string(key_points_img1.size()) + "   " + to_string(key_points_img2.size()), Point(0, 50), FONT_HERSHEY_COMPLEX, 1, Scalar(0, 0, 0) );
-    Mat H = findHomography(img1_points, img2_points, RANSAC, 5);
+    Mat H = findHomography(img1_points, img2_points, RANSAC, 10);
     
     vector<Point2f> img1_cross(5);
     Point2f middle = Point2f(img1.cols/2, img1.rows/2);
@@ -130,35 +183,59 @@ void drawMatch(Mat& img1, Mat& img2, Mat& img_matches, double ratio = 0.90, bool
         line(img_matches, img2_cross[2]+Point2f(img1.cols, 0), img2_cross[3]+Point2f(img1.cols, 0), Scalar(0, 255, 0), 2);
         circle(img_matches, img2_cross[4]+Point2f(img1.cols, 0), 5, Scalar(0, 0, 255), 2);
     }
-       
+
     return ;
   
 }
 
-
-void drawMatch1(Mat& img1, Mat& img2, Mat& img_matches, double ratio = 0.75, bool extended = false){
-   
-    int minHessian=400;
-    SurfFeatureDetector  detector(minHessian, 4, 3, false);
+void draw_match(Mat& img1,
+                Mat& img2,
+                Mat& img_matches,
+                Ptr<SurfFeatureDetector> &detector,
+                int max_hessian = 800,
+                int min_hessian = 5,
+                int max_size = 300,
+                int min_size = 200,
+                double ratio = 0.8, 
+                bool extended = false){
+    
+                    
     vector<KeyPoint>key_points_img1, key_points_img2;
-    detector.detect(img1, key_points_img1);
-    detector.detect(img2, key_points_img2);
-    
-    while (key_points_img1.size()<200 && minHessian >= 25){
-        minHessian /= 2;
-        SurfFeatureDetector  detector(minHessian, 4, 3, false);
-        detector.detect(img1, key_points_img1);
-        detector.detect(img2, key_points_img2);
+    time_t start, end;
+ 
+    detector->detect(img1, key_points_img1);
+
+    int hessian = detector->hessianThreshold;
+    //cout << "Threshold_start:" << detector->hessianThreshold <<endl;
+
+    while ((key_points_img1.size() < min_size || key_points_img1.size() > max_size) && hessian >= min_hessian){
+        if ( key_points_img1.size() < min_size ){
+            hessian = (int)hessian/1.5;
+            detector.release();
+            //start = clock();
+            detector = new SurfFeatureDetector(hessian);
+            //end = clock();
+            //cout<<"Time for new a SURF objct: "<< (end-start) * 1.0 / CLOCKS_PER_SEC <<endl;
+            detector->detect(img1, key_points_img1);
+        }
+
+        else
+        {
+            sort(key_points_img1.begin(), key_points_img1.end(), compare_hessian);
+            key_points_img1.resize(max_size);
+        }
+        
     }
-    
-    
+
+    detector->detect(img2, key_points_img2);
+    //cout << "Threshold_end:" << detector->hessianThreshold <<endl;
     if(key_points_img1.size() < 4 || key_points_img2.size() < 4){
         return ;
     }
 
     Mat descriptor_img1, descriptor_img2;
-    detector.compute(img1, key_points_img1, descriptor_img1);
-    detector.compute(img2, key_points_img2, descriptor_img2);
+    detector->compute(img1, key_points_img1, descriptor_img1);
+    detector->compute(img2, key_points_img2, descriptor_img2);
     
     
     BFMatcher matcher;
@@ -170,11 +247,11 @@ void drawMatch1(Mat& img1, Mat& img2, Mat& img_matches, double ratio = 0.75, boo
     if(descriptor_img1.empty() || descriptor_img2.empty()){
         return ;
     }
+    
     map<int, DMatch> matches_map;
    
-    if (matches.size() < 30){
-        ratio = 0.9;
-    }
+    //double ratio = max_ratio  - (max_ratio - min_ratio) * ((key_points_img1.size() - min_size) * 1.0 / (max_size - min_size));
+    //cout<<"ratio: "<<ratio<<endl;
 
     for(int i = 0; i < matches.size(); i++)
     {
@@ -199,8 +276,7 @@ void drawMatch1(Mat& img1, Mat& img2, Mat& img_matches, double ratio = 0.75, boo
     if (good_matches.size() < 4){
         return ;
     }
-    cout<<"Number of vaild keypoint: "<< good_matches.size()<<endl;
-
+    cout<<"Number of vaild point: "<< good_matches.size()<<endl;
     
     sort(good_matches.begin(), good_matches.end());
 
@@ -209,8 +285,7 @@ void drawMatch1(Mat& img1, Mat& img2, Mat& img_matches, double ratio = 0.75, boo
     vector<Point2f> img1_points;
     vector<Point2f> img2_points;
     
-    //int num_good = min((int)good_matches.size(),50);
-    int num_good = (int)good_matches.size();
+    int num_good = min((int)good_matches.size(), (int)good_matches.size());
     vector<DMatch> first_matches;
     
     for(unsigned int i = 0; i < num_good; ++i)
@@ -227,7 +302,7 @@ void drawMatch1(Mat& img1, Mat& img2, Mat& img_matches, double ratio = 0.75, boo
     drawMatches(img1, key_points_img1, img2, key_points_img2, first_matches, img_matches);
     
     cv::putText(img_matches, to_string(key_points_img1.size()) + "   " + to_string(key_points_img2.size()), Point(0, 50), FONT_HERSHEY_COMPLEX, 1, Scalar(0, 0, 0) );
-    Mat H = findHomography(img1_points, img2_points, RANSAC, 5);
+    Mat H = findHomography(img1_points, img2_points, RANSAC, 10);
     
     vector<Point2f> img1_cross(5);
     Point2f middle = Point2f(img1.cols/2, img1.rows/2);
@@ -249,7 +324,7 @@ void drawMatch1(Mat& img1, Mat& img2, Mat& img_matches, double ratio = 0.75, boo
         line(img_matches, img2_cross[2]+Point2f(img1.cols, 0), img2_cross[3]+Point2f(img1.cols, 0), Scalar(0, 255, 0), 2);
         circle(img_matches, img2_cross[4]+Point2f(img1.cols, 0), 5, Scalar(0, 0, 255), 2);
     }
-       
+
     return ;
   
 }
@@ -263,29 +338,27 @@ int main(int argc, char const *argv[])
     string img2_name = "2/";
     string extention = ".png";
     int i=0;
-    Mat ransac;
-    Mat lmead;
-    
+    Mat out1, out2;
+
+    Ptr<SurfFeatureDetector> detector = new SurfFeatureDetector(200);
+    Ptr<SurfFeatureDetector> detector1 = new SurfFeatureDetector(200);
+    Ptr<SurfFeatureDetector> detector2 = new SurfFeatureDetector(200);
     while (i<115)
     {
 
     Mat img1 = imread(folder + img1_name + to_string(i) + extention, IMREAD_COLOR);
     Mat img2 = imread(folder + img2_name + to_string(i) + extention, IMREAD_COLOR);
-    
-    //Mat org = imread(comp_folder + to_string(i) + extention, IMREAD_COLOR);
-    drawMatch(img1, img2, ransac);
-    if (!ransac.empty())
-        imshow("RANSAC", ransac);
-        
-    drawMatch1(img1, img2, lmead);
-    if (!lmead.empty())
-        imshow("RANSAC1", lmead);
+ 
+    draw_match(img1, img2, out1, detector);
+    if (!out1.empty())
+        imshow("Single Obj", out1);
+
+    draw_match_double_surf(img1, img2, out2, detector1, detector2);
+    if (!out2.empty())
+        imshow("Double Obj", out2);
+
     waitKey(0);
-    
-    //drawMatch(img2, img1, reverse);
-    //if (!reverse.empty())
-        //imshow("Reverse", reverse);
-    
+
     i++;
     }
     
