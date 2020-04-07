@@ -46,7 +46,7 @@ Mat get_better_h(const vector<Point2f> &img1_points, const vector<Point2f> &img2
         error1 += get_distance(p1, img2_points[i]);
         error2 += get_distance(p2, img2_points[i]);
     }
-    //cout<<"error1:  "<<error1<<endl<<"error2:  "<<error2<<endl;
+    cout<<"error1:  "<<error1<<endl<<"error2:  "<<error2<<endl;
     if (error1 > error2){
         cout<<"LEMED"<<endl;
         return h2;
@@ -97,7 +97,8 @@ void draw_match_double(Mat& img1,
         {
             sort(key_points_img1.begin(), key_points_img1.end(), compare_hessian);
             key_points_img1.resize(max_size);
-            hessian = (int)(hessian * 1.5 + rand()%10); // In case stuck
+            //hessian = (int)(hessian * 1.5 + rand()%10); // In case stuck
+            hessian = (int)(hessian * 1.5 );  
             detector1.release();
             //start = clock();
             detector1 = new SurfFeatureDetector(hessian);
@@ -129,7 +130,8 @@ void draw_match_double(Mat& img1,
         {
             sort(key_points_img2.begin(), key_points_img2.end(), compare_hessian);
             key_points_img2.resize(max_size);
-            hessian = (int)(hessian * 1.5 + rand()%10); // In case stuck
+            //hessian = (int)(hessian * 1.5 + rand()%10); // In case stuck
+            hessian = (int)(hessian * 1.5 );
             detector2.release();
             //start = clock();
             detector2 = new SurfFeatureDetector(hessian);
@@ -235,8 +237,11 @@ void draw_match_double(Mat& img1,
     Mat H1 = findHomography(img1_points, img2_points, RANSAC, 10);
     //Mat H2 = findHomography(img1_points, img2_points, LMEDS);
     Mat H2 = findHomography(img1_points, img2_points, RANSAC, 5);
+    Mat H3 = findHomography(img1_points, img2_points, RANSAC, 3);
 
     Mat H = get_better_h(img1_points, img2_points, H1, H2);
+    H = get_better_h(img1_points, img2_points, H, H3);
+    
     
     vector<Point2f> img1_cross(5);
     Point2f middle = Point2f(img1.cols/2, img1.rows/2);
@@ -262,7 +267,6 @@ void draw_match_double(Mat& img1,
     return ;
   
 }
-
 
 
 void draw_match_single(Mat& img1,
@@ -302,7 +306,8 @@ void draw_match_single(Mat& img1,
         {
             sort(key_points_img1.begin(), key_points_img1.end(), compare_hessian);
             key_points_img1.resize(max_size);
-            hessian = (int)(hessian * 1.5 + rand()%10); // In case stuck
+            //hessian = (int)(hessian * 1.5 + rand()%10); // In case stuck
+            hessian = (int)(hessian * 1.5 );
             detector1.release();
             //start = clock();
             detector1 = new SurfFeatureDetector(hessian);
@@ -334,7 +339,8 @@ void draw_match_single(Mat& img1,
         {
             sort(key_points_img2.begin(), key_points_img2.end(), compare_hessian);
             key_points_img2.resize(max_size);
-            hessian = (int)(hessian * 1.5 + rand()%10); // In case stuck
+            //hessian = (int)(hessian * 1.5 + rand()%10); // In case stuck
+            hessian = (int)(hessian * 1.5 );
             detector2.release();
             //start = clock();
             detector2 = new SurfFeatureDetector(hessian);
@@ -438,6 +444,7 @@ void draw_match_single(Mat& img1,
     
     cv::putText(img_matches, to_string(key_points_img1.size()) + "   " + to_string(key_points_img2.size()), Point(0, 50), FONT_HERSHEY_COMPLEX, 1, Scalar(0, 0, 0) );
     Mat H = findHomography(img1_points, img2_points, RANSAC, 10);
+    
     
     vector<Point2f> img1_cross(5);
     Point2f middle = Point2f(img1.cols/2, img1.rows/2);
